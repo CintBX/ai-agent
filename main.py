@@ -15,15 +15,19 @@ def main():
         types.Content(role="user", parts=[types.Part(text=sys.argv[1])]),
     ]
     has_prompt = len(sys.argv) > 1
+    has_verbose_flag = "--verbose" in sys.argv
 
     if has_prompt:
         response = client.models.generate_content(
             model="gemini-2.0-flash-001",
             contents=messages
         )
+        if has_verbose_flag:
+            print(f"User prompt: {response.text}")
+            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+            print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+            return
         print(response.text)
-        print("Prompt tokens:", response.usage_metadata.prompt_token_count)
-        print("Response tokens:", response.usage_metadata.candidates_token_count)
     else:
         print("Please provide a prompt.")
         sys.exit(1)
