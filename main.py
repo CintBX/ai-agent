@@ -4,7 +4,11 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from prompts import system_prompt
-from schemas import available_functions
+from call_function import available_functions, call_function
+from functions.get_files_info import get_files_info
+from functions.get_file_content import get_file_content
+from functions.write_file import write_file
+from functions.run_python import run_python_file
 
 
 def main():
@@ -30,7 +34,7 @@ def main():
         print(f"User prompt: {user_prompt}\n")
 
     messages = [
-        types.Content(role="user", parts=[types.Part(text=user_prompt)]),
+        types.Content(role="user", parts = [types.Part(text = user_prompt)]),
     ]
 
     generate_content(client, messages, verbose)
@@ -52,8 +56,20 @@ def generate_content(client, messages, verbose):
     if not response.function_calls:
         print(response.text)
 
-    for function_call in response.function_calls:
-        print(f"Calling function: {function_call.name}({function_call.args})")
+    function_responses = []
+    for function_call_part in response.function_calls:
+        function_call_result = call_function(function_call_part, verbose)
+        if (
+            not function_call_result.parts
+            or not function_call_result.parts[0].function_response.response
+        ):
+            raise Exception("Empty function call result.")
+        if verbose:
+            print(f"-> {function_call_result.parts[0].function_response.response}")
+        function_responses.append(function_call_result.parts[0])
+
+    if not function_responses:
+        raise Exception("No function responses generated. Exiting program.")
 
 
 if __name__ == "__main__":

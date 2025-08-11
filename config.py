@@ -1,2 +1,3 @@
 MAX_CHARS = 10000
 PYTHON_EXTENSION = ".py"
+WORKING_DIR = "./calculator"
