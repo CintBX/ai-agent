@@ -1,14 +1,11 @@
-import os
 import sys
-from dotenv import load_dotenv
+import os
 from google import genai
 from google.genai import types
+from dotenv import load_dotenv
 from prompts import system_prompt
 from call_function import available_functions, call_function
-from functions.get_files_info import get_files_info
-from functions.get_file_content import get_file_content
-from functions.write_file import write_file
-from functions.run_python import run_python_file
+from config import MAX_ITERATIONS
 
 
 def main():
@@ -34,10 +31,24 @@ def main():
         print(f"User prompt: {user_prompt}\n")
 
     messages = [
-        types.Content(role="user", parts = [types.Part(text = user_prompt)]),
+        types.Content(role = "user", parts = [types.Part(text = user_prompt)]),
     ]
 
-    generate_content(client, messages, verbose)
+    iterations = 0
+    while True:
+        iterations += 1
+        if iterations > MAX_ITERATIONS:
+            print(f"Maximum interations ({MAX_ITERATIONS}) reached.")
+            sys.exit(1)
+
+        try:
+            final_response = generate_content(client, messages, verbose)
+            if final_response:
+                print("Final response:")
+                print(final_response)
+                break
+        except Exception as e:
+            print(f"Error generating content: {e}")
 
 
 def generate_content(client, messages, verbose):
@@ -52,9 +63,13 @@ def generate_content(client, messages, verbose):
     if verbose:
         print("Prompt tokens:", response.usage_metadata.prompt_token_count)
         print("Response tokens:", response.usage_metadata.candidates_token_count)
+
+    if response.candidates:
+        for candidate in response.candidates:
+            messages.append(candidate.content)
     
     if not response.function_calls:
-        print(response.text)
+        return response.text
 
     function_responses = []
     for function_call_part in response.function_calls:
@@ -70,6 +85,8 @@ def generate_content(client, messages, verbose):
 
     if not function_responses:
         raise Exception("No function responses generated. Exiting program.")
+    
+    messages.append(types.Content(role="user", parts=function_responses))
 
 
 if __name__ == "__main__":
